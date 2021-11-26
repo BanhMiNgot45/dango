@@ -1,7 +1,7 @@
-extern crate peroxide;
 extern crate reqwest;
+extern crate polars;
 
-use peroxide::fuga::*;
+use polars::prelude::*;
 use std::fs::File;
 use std::io;
 use std::string::String;
@@ -12,8 +12,6 @@ pub async fn get_file_from_url(url: String, file_name: String) {
     io::copy(&mut resp.text().await.unwrap().as_bytes(), &mut out).expect("failed to copy content!");
 }
 
-pub fn to_dataframe(file_path: String) -> Result<DataFrame, Box<dyn Error>> {
-    let mut df = DataFrame::read_csv(&file_path.to_string(), ',')?;
-    df.as_types(vec![I32, I32, Str, Str, Str, Str, Str, Str, Str, I32, I32, Str]);
-    Ok(df)
+pub fn to_dataframe(file_path: String) -> Result<DataFrame> {
+    CsvReader::from_path(file_path)?.infer_schema(None).has_header(true).finish()
 }

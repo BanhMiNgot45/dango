@@ -46,10 +46,10 @@ pub fn tokenize(df: DataFrame) -> (Vec<Text>, Vec<Text>) {
     let answer = df.column("answerText").unwrap();
     let mut question_vec: Vec<Vec<String>> = Vec::new();
     for series in question {
-        let mut vec: Vec<Vec<String>> = series.utf8().unwrap().into_iter().map(|s| to_tokens(s.unwrap().to_owned())).collect();
+        let mut vec: Vec<Vec<String>> = series.utf8().unwrap().into_iter().map(|s| to_tokens(s.unwrap().to_owned().to_lowercase())).collect();
         question_vec.append(&mut vec);
     }
-    let answer_vec: Vec<Vec<String>> = answer.utf8().unwrap().into_iter().map(|s| to_tokens(s.unwrap().to_owned())).collect();
+    let answer_vec: Vec<Vec<String>> = answer.utf8().unwrap().into_iter().map(|s| to_tokens(s.unwrap().to_owned().to_lowercase())).collect();
     let mut questions: Vec<Text> = Vec::new();
     for vec in question_vec {
         questions.push(Text {tokens: vec});

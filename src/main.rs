@@ -1,5 +1,7 @@
 mod file_ops;
+mod one_hot_encode;
 mod preprocess;
+mod utils;
 
 #[tokio::main]
 async fn main() {
@@ -8,4 +10,5 @@ async fn main() {
     let df = file_ops::to_dataframe(format!("{}",file_name)).unwrap();
     let cleaned_df = preprocess::clean(df);
     let (questions, answers) = preprocess::tokenize(cleaned_df);
+    let (s_to_i, i_to_s) = one_hot_encode::one_hot_encode_maps((questions, answers));
 }

@@ -66,8 +66,10 @@ fn to_tokens(s: String) -> Vec<String> {
     let string = &s.to_string();
     let t: Vec<&str> = tokenizer.tokenize(string).collect();
     let mut tokens: Vec<String> = Vec::new();
+    tokens.push("#BEG".to_owned());
     for string in t {
         tokens.push(string.to_owned());
     }
+    tokens.push("#END".to_owned());
     tokens
 }

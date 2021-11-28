@@ -1,3 +1,5 @@
+extern crate ndarray;
+
 use std::collections::HashMap;
 use std::cmp::{max, min};
 use std::string::String;
@@ -89,4 +91,58 @@ fn modified_precision(translation: Vec<String>, list_of_references: Vec<Vec<Stri
 
 fn closest_ref_length(translation: Vec<String>, list_of_references: Vec<Vec<String>>) -> i32 {
     let translation_length = translation.len();
+    let mut vec: Vec<i32> = Vec::new();
+    for x in list_of_references.clone() {
+        let i = i32::abs((x.len() - translation_length) as i32);
+        vec.push(i);
+    }
+    let mut idx = 0;
+    let mut min = vec[idx];
+    let mut min_idx = 0;
+    for i in vec {
+        if i < min {
+            min = i;
+            min_idx = idx;
+        }
+        idx += 1;
+    }
+    list_of_references[min_idx].len() as i32
+}
+
+fn brevity_penalty(translation: Vec<String>, list_of_references: Vec<Vec<String>>) -> f32 {
+    let c = translation.len();
+    let r = closest_ref_length(translation, list_of_references);
+    if c > r as usize {
+        1.0
+    } else {
+        f32::powf(std::f32::consts::E, r as f32 / c as f32)
+    }
+}
+
+pub fn bleu_score(translation: Vec<String>, list_of_references: Vec<Vec<String>>, n: i32) -> f32 {
+    let bp = brevity_penalty(translation.clone(), list_of_references.clone());
+    let mut i = 0;
+    let mut vec: Vec<f32> = Vec::new();
+    loop {
+        vec.push(modified_precision(translation.clone(), list_of_references.clone(), i));
+        i += 1;
+        if i == n {
+            break;
+        }
+    }
+    let mut j = 0;
+    let mut score = 0.0;
+    loop {
+        let mp = vec[j];
+        if mp == 0.0 {
+            score += 0.0
+        } else {
+            score += (1.0 / n as f32) * mp.ln();
+        }
+        j += 1;
+        if j == n as usize {
+            break;
+        }
+    }
+    bp * f32::powf(std::f32::consts::E, score)
 }

@@ -109,3 +109,7 @@ impl GRUCell {
         (dx_in, dh_in)
     }
 }
+
+pub struct GRULayer {
+    
+}

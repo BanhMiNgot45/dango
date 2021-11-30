@@ -1,9 +1,10 @@
 extern crate ndarray;
 
 use crate::math;
-use ndarray::{Array2, Axis};
+use ndarray::{Array2, Array3, Axis, s};
 use std::collections::HashMap;
 
+#[derive(Clone)]
 pub struct GRUCell {
     x_in: Array2<f32>,
     h_in: Array2<f32>,
@@ -110,6 +111,120 @@ impl GRUCell {
     }
 }
 
+#[derive(Clone)]
 pub struct GRULayer {
-    
+    batch_size: usize,
+    vocab_size: usize,
+    hidden_size: usize,
+    output_size: usize,
+    weight_scale: f32,
+    start_h: Vec<f32>,
+    first: bool,
+    params_dict: HashMap<String, HashMap<String, Array2<f32>>>,
+    cells: Vec<GRUCell>
+}
+
+impl GRULayer {
+    pub fn new(batch_size: usize, hidden_size: usize, output_size: usize, weight_scale: f32) -> GRULayer {
+        GRULayer {
+            batch_size: batch_size,
+            vocab_size: 0,
+            hidden_size: hidden_size,
+            output_size: output_size,
+            weight_scale: weight_scale,
+            start_h: Vec::new(),
+            first: true,
+            params_dict: HashMap::new(),
+            cells: Vec::new()
+        }
+    }
+
+    fn init_params(mut self, input: Array3<f32>) {
+        self.vocab_size = input.len_of(Axis(2));
+        self.params_dict.insert("W_xr".to_owned(), HashMap::new());
+        self.params_dict.insert("W_hr".to_owned(), HashMap::new());
+        self.params_dict.insert("B_r".to_owned(), HashMap::new());
+        self.params_dict.insert("W_xu".to_owned(), HashMap::new());
+        self.params_dict.insert("W_hu".to_owned(), HashMap::new());
+        self.params_dict.insert("B_u".to_owned(), HashMap::new());
+        self.params_dict.insert("W_xh".to_owned(), HashMap::new());
+        self.params_dict.insert("W_hh".to_owned(), HashMap::new());
+        self.params_dict.insert("B_h".to_owned(), HashMap::new());
+        self.params_dict.insert("W_v".to_owned(), HashMap::new());
+        self.params_dict.insert("B_v".to_owned(), HashMap::new());
+        self.params_dict.get("W_xr").unwrap().to_owned().insert("value".to_owned(), math::rand_array(0.0, self.weight_scale, (self.vocab_size, self.hidden_size)));
+        self.params_dict.get("W_hr").unwrap().to_owned().insert("value".to_owned(), math::rand_array(0.0, self.weight_scale, (self.hidden_size, self.hidden_size)));
+        self.params_dict.get("B_r").unwrap().to_owned().insert("value".to_owned(), math::rand_array(0.0, self.weight_scale, (1, self.hidden_size)));
+        self.params_dict.get("W_xu").unwrap().to_owned().insert("value".to_owned(), math::rand_array(0.0, self.weight_scale, (self.vocab_size, self.hidden_size)));
+        self.params_dict.get("W_hu").unwrap().to_owned().insert("value".to_owned(), math::rand_array(0.0, self.weight_scale, (self.hidden_size, self.hidden_size)));
+        self.params_dict.get("B_u").unwrap().to_owned().insert("value".to_owned(), math::rand_array(0.0, self.weight_scale, (1, self.hidden_size)));
+        self.params_dict.get("W_xh").unwrap().to_owned().insert("value".to_owned(), math::rand_array(0.0, self.weight_scale, (self.vocab_size, self.hidden_size)));
+        self.params_dict.get("W_hh").unwrap().to_owned().insert("value".to_owned(), math::rand_array(0.0, self.weight_scale, (self.hidden_size, self.hidden_size)));
+        self.params_dict.get("B_h").unwrap().to_owned().insert("value".to_owned(), math::rand_array(0.0, self.weight_scale, (1, self.hidden_size)));
+        self.params_dict.get("W_v").unwrap().to_owned().insert("value".to_owned(), math::rand_array(0.0, self.weight_scale, (self.hidden_size, self.output_size)));
+        self.params_dict.get("B_v").unwrap().to_owned().insert("value".to_owned(), math::rand_array(0.0, self.weight_scale, (1, self.output_size)));
+        for key in self.params_dict.keys() {
+            self.params_dict.get(key).unwrap().to_owned().insert("deriv".to_owned(), Array2::zeros((self.params_dict[key]["value"].nrows(), self.params_dict[key]["value"].ncols())));
+        }
+        let mut i = 0;
+        loop {
+            self.cells.push(GRUCell::new(self.batch_size, self.hidden_size, self.vocab_size));
+            i += 1;
+            if i == input.len_of(Axis(1)) {
+                break;
+            }
+        }
+    }
+
+    fn clear_gradients(self) {
+        for key in self.params_dict.keys() {
+            self.params_dict.get(key).unwrap().to_owned().insert("deriv".to_owned(), Array2::zeros((self.params_dict[key]["deriv"].nrows(), self.params_dict[key]["deriv"].ncols())));
+        }
+    }
+
+    pub fn forward(mut self, x_seq_in: Array3<f32>) -> Array3<f32> {
+        if self.first {
+            self.clone().init_params(x_seq_in.clone());
+            let mut a = 0;
+            loop {
+                self.start_h.clone().push(0.0);
+                a += 1;
+                if a == self.hidden_size {
+                    break;
+                }
+            }
+            self.first = false;
+        }
+        let mut dummy: Vec<f32> = Vec::new();
+        let mut b = 0;
+        loop {
+            for num in self.start_h.clone() {
+                dummy.push(num);
+            }
+            b += 1;
+            if b == self.batch_size {
+                break;
+            }
+        }
+        let mut h_in = Array2::from_shape_vec((self.batch_size, self.hidden_size), dummy).unwrap();
+        let sequence_length = x_seq_in.len_of(Axis(1));
+        let mut x_seq_out: Vec<f32> = Vec::new();
+        let mut i = 0;
+        let mut y_out: Array2<f32>;
+        loop {
+            let x_in = x_seq_in.slice(s![.., i, ..]);
+            let blah = self.cells[i].clone().forward(x_in.to_owned(), h_in.clone(), self.params_dict.clone());
+            y_out = blah.0;
+            h_in = blah.1;
+            i += 1;
+            if i == sequence_length {
+                break;
+            }
+            for num in y_out {
+                x_seq_out.push(num);
+            }
+        }
+        self.start_h = h_in.mean_axis(Axis(0)).unwrap().to_vec();
+        Array3::from_shape_vec((self.batch_size, sequence_length, self.output_size), x_seq_out).unwrap()
+    }
 }

@@ -227,4 +227,27 @@ impl GRULayer {
         self.start_h = h_in.mean_axis(Axis(0)).unwrap().to_vec();
         Array3::from_shape_vec((self.batch_size, sequence_length, self.output_size), x_seq_out).unwrap()
     }
+
+    pub fn backward(mut self, x_seq_out_grad: Array3<f32>) -> Array3<f32> {
+        let sequence_length = x_seq_out_grad.len_of(Axis(1));
+        let mut h_in_grad = Array2::zeros((self.batch_size, self.hidden_size));
+        let num_words = x_seq_out_grad.len_of(Axis(1));
+        let mut x_seq_in_grad: Vec<f32> = Vec::new();
+        let mut i = num_words;
+        let mut grad_out: Array2<f32>;
+        loop {
+            let x_out_grad = x_seq_out_grad.slice(s![.., i, ..]);
+            let blah = self.cells[i].clone().backward(x_out_grad.to_owned(), h_in_grad, self.params_dict.clone());
+            grad_out = blah.0;
+            h_in_grad = blah.1;
+            for num in grad_out {
+                x_seq_in_grad.push(num);
+            }
+            i -= 1;
+            if i == 0 {
+                break;
+            }
+        }
+        Array3::from_shape_vec((self.batch_size, sequence_length, self.vocab_size), x_seq_in_grad).unwrap()
+    }
 }

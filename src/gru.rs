@@ -251,3 +251,10 @@ impl GRULayer {
         Array3::from_shape_vec((self.batch_size, sequence_length, self.vocab_size), x_seq_in_grad).unwrap()
     }
 }
+
+pub struct GRUModel {
+    layers: Vec<GRULayer>,
+    sequence_length: i32,
+    vocab_size: i32,
+    hidden_size: i32
+}

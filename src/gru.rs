@@ -121,7 +121,7 @@ pub struct GRULayer {
     weight_scale: f32,
     start_h: Vec<f32>,
     first: bool,
-    params_dict: HashMap<String, HashMap<String, Array2<f32>>>,
+    pub params_dict: HashMap<String, HashMap<String, Array2<f32>>>,
     cells: Vec<GRUCell>
 }
 
@@ -255,7 +255,7 @@ impl GRULayer {
 
 #[derive(Clone)]
 pub struct GRUModel {
-    layers: Vec<GRULayer>,
+    pub layers: Vec<GRULayer>,
     sequence_length: i32,
     vocab_size: i32,
     hidden_size: i32,

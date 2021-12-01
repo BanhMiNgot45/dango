@@ -5,7 +5,6 @@ use ndarray::Array3;
 
 #[derive(Clone)]
 pub struct SoftmaxCrossEntropy {
-    eps: f32,
     single_class: bool,
     prediction: Array3<f32>,
     target: Array3<f32>,
@@ -17,7 +16,6 @@ pub struct SoftmaxCrossEntropy {
 impl SoftmaxCrossEntropy {
     pub fn new(batch_size: usize, sequence_size: usize, vocab_size: usize) -> SoftmaxCrossEntropy {
         SoftmaxCrossEntropy {
-            eps: 1e-9,
             single_class: false,
             prediction: Array3::zeros((batch_size, sequence_size, vocab_size)),
             target: Array3::zeros((batch_size, sequence_size, vocab_size)),

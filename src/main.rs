@@ -4,6 +4,7 @@ mod loss;
 mod math;
 mod one_hot_encode;
 mod preprocess;
+mod sgd;
 mod utils;
 
 #[tokio::main]

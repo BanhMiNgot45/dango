@@ -1,5 +1,6 @@
 extern crate ndarray;
 
+use crate::loss;
 use crate::math;
 use ndarray::{Array2, Array3, Axis, s};
 use std::collections::HashMap;
@@ -176,7 +177,7 @@ impl GRULayer {
         }
     }
 
-    fn clear_gradients(self) {
+    pub fn clear_gradients(self) {
         for key in self.params_dict.keys() {
             self.params_dict.get(key).unwrap().to_owned().insert("deriv".to_owned(), Array2::zeros((self.params_dict[key]["deriv"].nrows(), self.params_dict[key]["deriv"].ncols())));
         }
@@ -252,9 +253,48 @@ impl GRULayer {
     }
 }
 
+#[derive(Clone)]
 pub struct GRUModel {
     layers: Vec<GRULayer>,
     sequence_length: i32,
     vocab_size: i32,
-    hidden_size: i32
+    hidden_size: i32,
+    loss: loss::SoftmaxCrossEntropy
+}
+
+impl GRUModel {
+    pub fn new(layers: Vec<GRULayer>, sequence_length: i32, vocab_size: i32, hidden_size: i32, loss: loss::SoftmaxCrossEntropy) -> GRUModel {
+        GRUModel {
+            layers: layers,
+            sequence_length: sequence_length,
+            vocab_size: vocab_size,
+            hidden_size: hidden_size,
+            loss: loss
+        }
+    }
+
+    pub fn forward(self, mut x_batch: Array3<f32>) -> Array3<f32> {
+        for layer in self.layers {
+            x_batch = layer.forward(x_batch);
+        }
+        x_batch
+    }
+
+    pub fn backward(self, mut loss_grad: Array3<f32>) -> Array3<f32> {
+        for layer in self.layers.iter().rev() {
+            loss_grad = layer.to_owned().backward(loss_grad);
+        }
+        loss_grad
+    }
+
+    pub fn single_step(self, x_batch: Array3<f32>, y_batch: Array3<f32>) -> f32 {
+        let x_batch_out = self.clone().forward(x_batch);
+        let loss = self.clone().loss.forward(x_batch_out, y_batch);
+        let loss_grad = self.clone().loss.backward();
+        for layer in self.clone().layers {
+            layer.clear_gradients();
+        }
+        self.backward(loss_grad);
+        loss
+    }
 }

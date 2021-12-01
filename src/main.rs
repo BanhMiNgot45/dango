@@ -1,5 +1,6 @@
 mod file_ops;
 mod gru;
+mod loss;
 mod math;
 mod one_hot_encode;
 mod preprocess;

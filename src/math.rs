@@ -46,3 +46,18 @@ pub fn rand_array(loc: f32, scale: f32, size: (usize, usize)) -> Array2<f32> {
     }
     Array::from_shape_vec(size, temp).unwrap()
 }
+
+pub fn softmax(arr: Array2<f32>) -> Array2<f32> {
+    let mut vec: Vec<f32> = Vec::new();
+    for row in arr.outer_iter() {
+        let mut accum = 0.0;
+        for num in row {
+            accum += f32::powf(std::f32::consts::E, num.to_owned());
+        }
+        let new_row = row.mapv(|a| a / accum);
+        for n in new_row {
+            vec.push(n);
+        }
+    }
+    Array2::from_shape_vec((arr.nrows(), arr.ncols()), vec).unwrap()
+}

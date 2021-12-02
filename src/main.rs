@@ -1,3 +1,4 @@
+mod ensemble_model;
 mod file_ops;
 mod gru;
 mod loss;
@@ -16,4 +17,5 @@ async fn main() {
     let cleaned_df = preprocess::clean(df);
     let (questions, answers) = preprocess::tokenize(cleaned_df);
     let (s_to_i, i_to_s) = one_hot_encode::one_hot_encode_maps((questions, answers));
+    let model = ensemble_model::EnsembleModel::new(50, s_to_i.len() as i32, 256, 32, 50, 25, 0.01);
 }

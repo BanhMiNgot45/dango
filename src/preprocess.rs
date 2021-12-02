@@ -1,7 +1,10 @@
+extern crate ndarray;
 extern crate polars;
 extern crate vtext;
 
+use ndarray::Array2;
 use polars::prelude::*;
+use std::collections::HashMap;
 use std::string::String;
 use vtext::tokenize::{Tokenizer, UnicodeWordTokenizer};
 
@@ -72,4 +75,50 @@ fn to_tokens(s: String) -> Vec<String> {
     }
     tokens.push("#END".to_owned());
     tokens
+}
+
+pub fn generate_training_data(tokens: Vec<String>, word_to_id: HashMap<String, i32>, window: i32) -> (Array2<f32>, Array2<f32>) {
+    let mut x: Vec<f32> = Vec::new();
+    let mut y: Vec<f32> = Vec::new();
+    let n = tokens.len();
+    let mut i = 0;
+    loop {
+        let mut vec: Vec<i32> = (i32::max(0, i - window)..i).collect();
+        let mut dummy: Vec<i32> = (i..i32::min(i, i + window + 1)).collect();
+        vec.append(&mut dummy);
+        for num in vec {
+            if  i == num {
+                continue;
+            }
+            let temp = one_hot_encode(word_to_id[tokens.get(i as usize).unwrap()], word_to_id.len() as i32);
+            let dummy = one_hot_encode(word_to_id[tokens.get(num as usize).unwrap()],  word_to_id.len() as i32);
+            for t in temp {
+                x.push(t);
+            }
+            for d in dummy {
+                y.push(d);
+            }
+        }
+        i += 1;
+        if i == n as i32 {
+            break;
+        }
+    }
+    (Array2::from_shape_vec((tokens.len(), word_to_id.len()), x).unwrap(), Array2::from_shape_vec((tokens.len(), word_to_id.len()), y).unwrap())
+}
+
+fn one_hot_encode(id: i32, vocab_size: i32) -> Vec<f32> {
+    let mut vec: Vec<f32> = Vec::new();
+    let mut i = 0;
+    loop {
+        if i == id {
+            vec.push(1.0);
+        } else {
+            vec.push(0.0);
+        }
+        if i == vocab_size {
+            break;
+        }
+    }
+    vec
 }

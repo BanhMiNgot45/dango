@@ -6,6 +6,7 @@ mod one_hot_encode;
 mod preprocess;
 mod sgd;
 mod utils;
+mod wordvec;
 
 #[tokio::main]
 async fn main() {
